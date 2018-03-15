@@ -1,7 +1,6 @@
 'use strict';
 const Alexa = require('alexa-sdk');
-//const APP_ID = undefined;
-const APP_ID = "amzn1.ask.skill.1426cf07-34ea-4bef-9957-57d061aa3446";
+const APP_ID = undefined;
 
 //Different opening greetings
 var WELCOME = [
