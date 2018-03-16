@@ -1,26 +1,60 @@
 'use strict';
 const Alexa = require('alexa-sdk');
-//const APP_ID = undefined;
-const APP_ID = "amzn1.ask.skill.1426cf07-34ea-4bef-9957-57d061aa3446";
+const APP_ID = undefined;
 
-//Different opening greetings
-var WELCOME = [
-    "G\'day, how can I help?",
-    "Hey, ready to serve.",
-    "Hi there, is there anything I can do for you?",
-    "Hello, I\'m here to help you.",
-    "Aloha, what can I do for you today?",
+let speechOutput;
+let reprompt;
+const SKILL_NAME = 'Retro Master';
+const HELP_MESSAGE = 'You can say make a new list, or, you can say exit... What can I help you with?';
+const HELP_REPROMPT = 'What can I help you with?';
+const STOP_MESSAGE = 'No worries, see ya!';
+const INTRO = [
+   'This sounds like a cool combination. ',
+   'This will be great. ',
+   'Oh, wise choice. '
+ ];
 
-];
-//Different finishings
-var GOODBYE = [
-    "Okay, see ya!",
-    "Ok, see you soon.",
-    "Sure thing, see ya.",
-    "No worries, bye!",
-    "Of course, goodbye!",
-];
+//Implement Handler Functions
+const handlers = {
+    'LaunchRequest': function () {
+        this.emit('StartNewListIntent');
+    },
+   
+    'StartNewListIntent': function () {
+        //delegate to Alexa to collect all the required slot values
+        var filledSlots = delegateSlotCollection.call(this);
+        
+        //compose speechOutput that simply reads all the collected slot values
+        var speechOutput = randomPhrase(INTRO);
+        
+        //recap the order
+        if(isSlotValid(this.event.request,'Food')||isSlotValid(this.event.request,'Drink')){
+            var food = this.event.request.intent.slots.Food.value;
+            var drink = this.event.request.intent.slots.Drink.value;
+            speechOutput+= food + ' as your food and ' + drink + ' as your drink.';
+        }
+        //say the results
+        this.response.speak(speechOutput);
+        this.emit(':responseReady');
+    },
+    
+     //Built-in intents
+    'AMAZON.HelpIntent': function () {
+        const speechOutput = HELP_MESSAGE;
+        const reprompt = HELP_REPROMPT;
 
+        this.response.speak(speechOutput).listen(reprompt);
+        this.emit(':responseReady');
+    },
+    'AMAZON.CancelIntent': function () {
+        this.response.speak(STOP_MESSAGE);
+        this.emit(':responseReady');
+    },
+    'AMAZON.StopIntent': function () {
+        this.response.speak(STOP_MESSAGE);
+        this.emit(':responseReady');
+    },
+};
 
 //Set Entry Point
 exports.handler = function (event, context, callback) {
@@ -29,63 +63,50 @@ exports.handler = function (event, context, callback) {
     alexa.registerHandlers(handlers);
     alexa.execute();
 };
-//Implement Handler Functions
-const handlers = {
-    'LaunchRequest': function () {
-        //choose a random opening greeting
-        var welcomeIndex = Math.floor(Math.random() * WELCOME.length);
-        var randomGreeting = WELCOME[welcomeIndex];
-        this.attributes['speechOutput'] = randomGreeting;
-        this.attributes['repromptSpeech'] = 'I beg your pardon?';
-        this.emit(':ask',this.attributes['speechOutput'], this.attributes['repromptSpeech']);
-        //this.emit(':tell',this.attributes['speechOutput']);
-    },
-    //This intent is a simple calculate
-    'CalculateIntent': function() {
-        //Getting values from the user's input request
-        var operator = this.event.request.intent.slots.Operator.value;
-        var numberOne = parseInt(this.event.request.intent.slots.NumberOne.value);
-        var numberTwo = parseInt(this.event.request.intent.slots.NumberTwo.value);
-        var result = 0;
-        switch (operator) {
-            case 'add':
-                result = numberOne + numberTwo;
-                break;
-            case 'subtract':
-                result = numberOne - numberTwo;
-                break;
-            case 'multiply':
-                result = numberOne * numberTwo;
-                break;
-            case 'divide':
-                if(numberTwo!=0){
-                    result = numberOne / numberTwo; 
-                }
-                else{
-                    result = undefined;
-                }
-                break;
-            default:
-                result = numberOne + numberTwo;
-        }
-        this.emit(':tell', "The result is "+ result);
-        //this.emit(':tell', operator + numberOne +"to" + numberTwo+", well, this is a question.");
-    },
-    
-    //Built-in intents
-    'AMAZON.HelpIntent': function () {
+//    END of Intent Handlers {} ========================================================================================
+// 3. Helper Function  =================================================================================================
 
-    },
-    'AMAZON.CancelIntent': function () {
-        //choose a random goodbye
-        var goodbyeIndex = Math.floor(Math.random() * GOODBYE.length);
-        var randomGoodbye = GOODBYE[goodbyeIndex];
-        this.emit(':tell', randomGoodbye);
-    },
-    'AMAZON.StopIntent': function () {
-        //choose a random goodbye
-        var goodbyeIndex = Math.floor(Math.random() * GOODBYE.length);
-        var randomGoodbye = GOODBYE[goodbyeIndex];
-        this.emit(':tell', randomGoodbye);
-    },
-};
+function delegateSlotCollection(){
+  console.log('in delegateSlotCollection');
+  console.log('current dialogState: '+this.event.request.dialogState);
+    if (this.event.request.dialogState === 'STARTED') {
+      console.log('in Beginning');
+      var updatedIntent=this.event.request.intent;
+      //optionally pre-fill slots: update the intent object with slot values for which
+      //you have defaults, then return Dialog.Delegate with this updated intent
+      // in the updatedIntent property
+      this.emit(':delegate', updatedIntent);
+    } else if (this.event.request.dialogState !== 'COMPLETED') {
+      console.log('in not completed');
+      // return a Dialog.Delegate directive with no updatedIntent property.
+      this.emit(':delegate');
+    } else {
+      console.log('in completed');
+      console.log('returning: '+ JSON.stringify(this.event.request.intent));
+      // Dialog is now complete and all required slots should be filled,
+      // so call your normal intent handler.
+      return this.event.request.intent;
+    }
+}
+
+function randomPhrase(array) {
+    // the argument is an array [] of words or phrases
+    var i = 0;
+    i = Math.floor(Math.random() * array.length);
+    return(array[i]);
+}
+function isSlotValid(request, slotName){
+        var slot = request.intent.slots[slotName];
+        //console.log("request = "+JSON.stringify(request)); //uncomment if you want to see the request
+        var slotValue;
+
+        //if we have a slot, get the text and store it into speechOutput
+        if (slot && slot.value) {
+            //we have a value in the slot
+            slotValue = slot.value.toLowerCase();
+            return slotValue;
+        } else {
+            //we didn't get a value in the slot.
+            return false;
+        }
+}
